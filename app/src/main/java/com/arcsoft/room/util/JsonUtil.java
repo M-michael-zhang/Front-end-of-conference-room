@@ -9,6 +9,7 @@ import android.os.Message;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
 
+import com.arcsoft.room.Meet;
 import com.arcsoft.room.MyBean;
 import com.arcsoft.room.R;
 import com.arcsoft.room.WorkerBean;
@@ -39,7 +40,7 @@ import okhttp3.Response;
 public class JsonUtil {
     private static OkHttpClient client = new OkHttpClient();
     public ArrayList<String> list = new ArrayList<String>();
-    public ArrayList<String> getData() throws IOException {
+    public static ArrayList<Meet> getData() throws IOException {
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder().url("http://111.231.70.170:8000/room/meetings?id=12").build();
         MyBean resultBean = new MyBean();
@@ -61,24 +62,26 @@ public class JsonUtil {
         Date dt = new Date();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss aa");
         now_date=sdf.format(dt).substring(0,10);
-        String temp = "";
-        list.add("     "+resultBean.getExtras().getMeetings().get(0).getRoom().getName()+"   今日安排");
+        ArrayList<Meet> myMeet = new ArrayList<Meet>();
+        Meet temp;
+        String temp_s;
         for(int i = 0;i<resultBean.getExtras().getMeetings().size();i++){
             if(resultBean.getExtras().getMeetings().get(i).getStartTime().substring(0,10).equals(now_date))
             {
-                temp+=resultBean.getExtras().getMeetings().get(i).getStartTime().substring(11,16);
-                temp+="-";
-                temp+=resultBean.getExtras().getMeetings().get(i).getEndTime().substring(11,16);
-                temp+=resultBean.getExtras().getMeetings().get(i).getName();
-                list.add(temp);
-
+                temp = new Meet();
+                temp_s=resultBean.getExtras().getMeetings().get(i).getStartTime().substring(11,16);
+                temp_s+="-";
+                temp_s+=resultBean.getExtras().getMeetings().get(i).getEndTime().substring(11,16);
+                temp.setMeetTime(temp_s);
+                temp.setMeetName(resultBean.getExtras().getMeetings().get(i).getName());
+                myMeet.add(temp);
             }
-            temp = "";
         }
-        return list;
+        return myMeet;
     }
 
     public static void main(String[] args) throws IOException {
+//        System.out.println(getData());
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder().url("http://111.231.70.170:8000/user/all").build();
         WorkerBean resultBean = new WorkerBean();
@@ -91,18 +94,21 @@ public class JsonUtil {
             resultBean = new Gson().fromJson(jsonObject,WorkerBean.class);
             System.out.println(resultBean.getExtras().getUsers().size());
             System.out.println(resultBean.getExtras().getUsers().get(0).getPhotoPath().substring(10));
+            ArrayList<String> photoname = new ArrayList<String>();
             for(int i = 0;i<resultBean.getExtras().getUsers().size();i++){
                 System.out.println(resultBean.getExtras().getUsers().get(i).getPhotoPath().substring(10));
+                photoname.add(resultBean.getExtras().getUsers().get(i).getPhotoPath().substring(10));
 //                        showToast(resultBean.getExtras().getUsers().get(i).getPhotoPath().substring(10));
 //                        updateFace(resultBean.getExtras().getUsers().get(i).getPhotoPath().substring(10));
             }
 //                    JsonArray jsonArray = jsonObject.getAsJsonArray("meetings");
 //                    System.out.println(resultBean.getExtrax());
 
-
+            updateFace(photoname);
         } catch (IOException e) {
             e.printStackTrace();
         }
+
     }
 //
 //    private Handler mHandler = new Handler(){
@@ -114,31 +120,35 @@ public class JsonUtil {
 //
 //        }
 //    };
-    private void updateFace(String myurl){
-        try {
-            //对资源链接
-            URL url=new URL(myurl);
-            //打开输入流
-            InputStream inputStream=url.openStream();
-            //对网上资源进行下载转换位图图片
+    private static void updateFace(ArrayList<String> names) {
+        for (int i = 0; i < names.size(); i++) {
+
+            try {
+                //对资源链接
+                URL url = new URL("http://111.231.70.170:8000/userPhoto/" + names.get(i));
+                InputStream inputStream = url.openStream();
+                //对网上资源进行下载转换位图图片
 //            Bitmap bitmap;
 //            bitmap= BitmapFactory.decodeStream(inputStream);
 //            inputStream.close();
 
-            //再一次打开
-            inputStream=url.openStream();
-            File file=new File("D:\\hh.png");
-            FileOutputStream fileOutputStream=new FileOutputStream(file);
-            int hasRead=0;
-            while((hasRead=inputStream.read())!=-1){
-                fileOutputStream.write(hasRead);
+                //再一次打开
+                inputStream = url.openStream();
+                String sb = names.get(i);
+                String final_name = sb.replace("png", "jpg");
+                File file = new File("D:\\test\\" + final_name);
+                FileOutputStream fileOutputStream = new FileOutputStream(file);
+                int hasRead = 0;
+                while ((hasRead = inputStream.read()) != -1) {
+                    fileOutputStream.write(hasRead);
+                }
+                fileOutputStream.close();
+                inputStream.close();
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            fileOutputStream.close();
-            inputStream.close();
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
     private void checkRegister(String uid)  {

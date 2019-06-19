@@ -31,12 +31,16 @@ import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.ListView;
 
 import android.widget.Switch;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.arcsoft.room.Meet;
+import com.arcsoft.room.MeetAdapter;
 import com.arcsoft.room.MyBean;
 import com.arcsoft.room.WorkerBean;
 import com.arcsoft.room.common.Constants;
@@ -104,7 +108,6 @@ public class MainActivity extends AppCompatActivity {
     BluetoothAdapter ba;
     BluetoothDevice btd;
     BluetoothSocket socket;
-
     String addr = "98:D3:35:70:F6:FB";
     UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb");
 
@@ -162,6 +165,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private View previewView;
     private Switch switchSignout;
+    private Button btn_register;
     /**
      * 绘制人脸框的控件
      */
@@ -169,7 +173,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     private static final int ACTION_REQUEST_PERMISSIONS = 0x001;
-    private static final float SIMILAR_THRESHOLD = 0.8F;
+    private static final float SIMILAR_THRESHOLD = 0.6F;
     /**
      * 所需的所有权限信息
      */
@@ -221,27 +225,45 @@ public class MainActivity extends AppCompatActivity {
                 Date dt = new Date();
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss aa");
                 now_date=sdf.format(dt).substring(0,10);
-                String temp = "";
-                list.add("     "+resultBean.getExtras().getMeetings().get(0).getRoom().getName()+"   今日安排");
+                ArrayList<Meet> myMeet = new ArrayList<Meet>();
+                Meet temp;
+                String temp_s;
                 for(int i = 0;i<resultBean.getExtras().getMeetings().size();i++){
                     if(resultBean.getExtras().getMeetings().get(i).getStartTime().substring(0,10).equals(now_date))
                     {
-                        temp+=resultBean.getExtras().getMeetings().get(i).getStartTime().substring(11,16);
-                        temp+="-";
-                        temp+=resultBean.getExtras().getMeetings().get(i).getEndTime().substring(11,16)+"                ";
-                        temp+=resultBean.getExtras().getMeetings().get(i).getName();
-                        list.add(temp);
+                        temp = new Meet();
+                        temp_s=resultBean.getExtras().getMeetings().get(i).getStartTime().substring(11,16);
+                        temp_s+="-";
+                        temp_s+=resultBean.getExtras().getMeetings().get(i).getEndTime().substring(11,16);
+                        temp.setMeetTime(temp_s);
+                        temp.setMeetName(resultBean.getExtras().getMeetings().get(i).getName());
+                        myMeet.add(temp);
                     }
-                    temp = "";
                 }
-                list.add("");
-                list.add("");
-                list.add("");
-                list.add("");
-                list.add("");
-                ArrayAdapter<String> myAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, list);
+//                String temp = "";
+//                list.add("     "+resultBean.getExtras().getMeetings().get(0).getRoom().getName()+"   今日安排");
+//                for(int i = 0;i<resultBean.getExtras().getMeetings().size();i++){
+//                    if(resultBean.getExtras().getMeetings().get(i).getStartTime().substring(0,10).equals(now_date))
+//                    {
+//                        temp+=resultBean.getExtras().getMeetings().get(i).getStartTime().substring(11,16);
+//                        temp+="-";
+//                        temp+=resultBean.getExtras().getMeetings().get(i).getEndTime().substring(11,16)+"                ";
+//                        temp+=resultBean.getExtras().getMeetings().get(i).getName();
+//                        list.add(temp);
+//                    }
+//                    temp = "";
+//                }
+//                list.add("");
+//                list.add("");
+//                list.add("");
+//                list.add("");
+//                list.add("");
+                MeetAdapter meetAdapter = new MeetAdapter(MainActivity.this,R.layout.meetlist,myMeet);
                 listView = (ListView)MainActivity.this.findViewById(R.id.meet_list);
-                listView.setAdapter(myAdapter);
+                listView.setAdapter(meetAdapter);
+//                ArrayAdapter<String> myAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, list);
+//                listView = (ListView)MainActivity.this.findViewById(R.id.meet_list);
+//                listView.setAdapter(myAdapter);
 
             }
             if(msg.what==4){
@@ -303,7 +325,7 @@ public class MainActivity extends AppCompatActivity {
                         response = client.newCall(request).execute();
                         if (response.isSuccessful()) {
                             //将服务器响应的参数response.body().string())发送到hanlder中，并更新ui
-                            ;String result = response.body().string();
+                            String result = response.body().string();
                             System.out.println(result);
                             JsonObject jsonObject = new JsonParser().parse(result).getAsJsonObject();
 
@@ -350,7 +372,13 @@ public class MainActivity extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        btn_register = findViewById(R.id.btn_register);
+        btn_register.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                doRegister();
+            }
+        });
         switchSignout = findViewById(R.id.switch_signout);
         switchSignout.setChecked(signout);
         switchSignout.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -916,6 +944,10 @@ public class MainActivity extends AppCompatActivity {
                 inputStream = url.openStream();
                 String sb=names.get(i);
                 String final_name = sb.replace("png","jpg");
+                File path = new File(REGISTER_DIR);
+                if(!path.exists()){
+                    path.mkdirs();
+                }
                 File file = new File(REGISTER_DIR + "/"+final_name);
                 FileOutputStream fileOutputStream = new FileOutputStream(file);
                 int hasRead = 0;
@@ -955,7 +987,7 @@ public class MainActivity extends AppCompatActivity {
                     int size = resultBean.getExtras().getUsers().size();
 
                     ArrayList<String> photoname = new ArrayList<String>();
-                    for(int i = 0;i<size-1;i++) {
+                    for(int i = 0;i<size;i++) {
                         photoname.add(resultBean.getExtras().getUsers().get(i).getPhotoPath().substring(10));
                     }
                     updateFace(photoname);
@@ -967,8 +999,10 @@ public class MainActivity extends AppCompatActivity {
         }).start();
 
     }
-    public void doRegister(View view) {
+    public void doRegister() {
         getPhotos();
+        btn_register.setText("正在更新请稍后");
+        btn_register.setEnabled(false);
     }
     private void registerFace(){
         //clearface
@@ -1060,6 +1094,8 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+        btn_register.setEnabled(true);
+        btn_register.setText("更新人脸库");
     }
 
 
